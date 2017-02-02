@@ -5,7 +5,12 @@ import customdata from './data.json';
 
 var ClientData = React.createClass({
 	componentDidMount: function() {
-		console.log('success',customdata);
+		console.log("success",customdata);
+		if(1 == 2){
+			console.log('no')
+		}
+		
+		moo = 1;
 	},
 	render: function() {
 		return (

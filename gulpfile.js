@@ -39,11 +39,14 @@ var source = require('vinyl-source-stream');
 var buffer = require('vinyl-buffer');
 var browserSync = require('browser-sync').create();
 var htmlmin = require('gulp-htmlmin');
+var newer = require('gulp-newer');
+var eslint = require('gulp-eslint');
 
 //copy and minify HTML files to dist
 gulp.task('html',function(){
 	return gulp.src(paths.templates.src + '**/*.html')
 		.pipe(htmlmin({collapseWhitespace:true, minifyJS: true, minifyCSS: true}))
+		.pipe(newer(paths.templates.dest))
 		.on('error',function(e){
 			const error = gutil.colors.red;
 			gutil.log(error('Error in html:',e.message));
@@ -55,6 +58,7 @@ gulp.task('html',function(){
 gulp.task('styles', function(){
 	return gulp.src(paths.styles.src  + 'styles.less')
 		.pipe(less())
+		.pipe(newer(paths.styles.dest))
 		.on('error',function(e){
 			const error = gutil.colors.red;
 			gutil.log(error('Error in styles:',e.message));
@@ -66,7 +70,7 @@ gulp.task('styles', function(){
 });
 
 //copy, compile and minify JS to dist
-gulp.task('scripts', function(){
+gulp.task('scripts', ['eslint'], function(){
 	process.env.NODE_ENV = 'production';
 	browserify(paths.scripts.src  + 'main.js')
 		.transform('babelify',{presets: ['es2015','react'] })
@@ -83,8 +87,46 @@ gulp.task('scripts', function(){
 		.pipe(browserSync.stream())		
 });
 
+gulp.task('eslint', function(){
+	return gulp.src(paths.scripts.src + '**/*.js')
+		.pipe(eslint({
+			baseConfig: {
+				"parserOptions": {
+					"ecmaFeatures": {
+						"jsx": true,
+						"modules": true
+					}
+				},
+				"parser": "babel-eslint",
+				"rules":{
+					"eqeqeq": 1,
+					"curly":1,
+					"quotes": ["warn", "single"],					
+					"curly": 1,
+					"camelcase": 1,
+					"globals": {
+						"angular": 1,
+						"React": 1,
+						"$": 1,
+						"jQuery": 1
+					}					
+				}
+			}
+		}))
+		.pipe(eslint.format())
+		.pipe(eslint.failAfterError())
+});
+
+//copy assets to dist
+gulp.task('assets', () => {
+	return gulp.src(paths.assets.src + '**/*') 
+		.pipe(newer(paths.assets.dest))
+		.pipe(gulp.dest(paths.assets.dest))
+});
+
+
 //start browsersync
-gulp.task('browser-sync',  function() {
+gulp.task('browser-sync', ['styles', 'scripts', 'html', 'assets'], function() {
     browserSync.init({
 		server: {
 			baseDir: './dist/',
@@ -98,9 +140,9 @@ gulp.task('browser-sync',  function() {
 	gulp.watch(paths.scripts.src + '**/*.js', ['scripts']);
 	gulp.watch(paths.templates.src + '**/*.html', ['html']);
 	//gulp.watch(paths.images.src + '**/*', ['images']).on('change', browserSync.reload);
-	//gulp.watch(paths.assets.src + '**/*', ['assets']).on('change', browserSync.reload);		
+	gulp.watch(paths.assets.src + '**/*', ['assets']).on('change', browserSync.reload);		
 });
 
-gulp.task('default', ['styles', 'scripts', 'html'], function() {
+gulp.task('default', function() {
 	gulp.start('browser-sync');
 });
