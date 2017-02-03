@@ -39,6 +39,7 @@ var htmlmin = require('gulp-htmlmin');
 var newer = require('gulp-newer');
 var autoprefixer = require('gulp-autoprefixer');
 var imagemin = require('gulp-imagemin');
+var del = require('del');
 //react specific requirements
 var babelify = require('babelify');
 var source = require('vinyl-source-stream');
@@ -144,9 +145,15 @@ gulp.task('images', function(){
 			const error = gutil.colors.red;
 			gutil.log(error('Error in images:',e.message));
 		})
-		.pipe(imagemin({ optimizationLevel: 3, progressive: true, interlaced: true }))
 		.pipe(newer(paths.images.dest))
+		.pipe(imagemin({ optimizationLevel: 3, progressive: true, interlaced: true }))
 		.pipe(gulp.dest(paths.images.dest))
+});
+
+//remove the previous dist dir on starting
+gulp.task('clean', (done) => {
+	del.sync([paths.templates.dest + '*']);
+	done();
 });
 
 //start browsersync
@@ -167,6 +174,6 @@ gulp.task('browser-sync', ['styles', 'scripts', 'html', 'assets', 'images'], fun
 	gulp.watch(paths.assets.src + '**/*', ['assets']).on('change', browserSync.reload);		
 });
 
-gulp.task('default', function() {
+gulp.task('default', ['clean'], function() {
 	gulp.start('browser-sync');
 });
