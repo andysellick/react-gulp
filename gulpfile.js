@@ -162,10 +162,10 @@ gulp.task('browser-sync', ['styles', 'scripts', 'html', 'assets', 'images'], fun
 		server: {
 			baseDir: './dist/',
 			logLevel: 'debug'
+			// notify: false Will not show notify banner on reload or injected
+			// open: false; Will not open a browser window automatically
+			// online: false; Will not attempt to determine your network status
 		}
-		// notify: false Will not show notify banner on reload or injected
-		// open: false; Will not open a browser window automatically
-		// online: false; Will not attempt to determine your network status
     });
 	gulp.watch(paths.styles.src + '**/*.less', ['styles']);
 	gulp.watch(paths.scripts.src + '**/*.js', ['scripts']);
