@@ -26,20 +26,23 @@ const paths = {
 		dest: 'dist/static/bower_components/'
 	}
 };
-
+//general requirements
 var gulp = require('gulp');
 var less = require('gulp-less');
 var minifyCSS = require('gulp-csso');
 var rename = require('gulp-rename');
 var uglify = require('gulp-uglify');
-var babelify = require('babelify');
 var browserify = require('browserify');
 var gutil = require('gulp-util');
-var source = require('vinyl-source-stream');
-var buffer = require('vinyl-buffer');
 var browserSync = require('browser-sync').create();
 var htmlmin = require('gulp-htmlmin');
 var newer = require('gulp-newer');
+var autoprefixer = require('gulp-autoprefixer');
+var imagemin = require('gulp-imagemin');
+//react specific requirements
+var babelify = require('babelify');
+var source = require('vinyl-source-stream');
+var buffer = require('vinyl-buffer');
 var eslint = require('gulp-eslint');
 
 //copy and minify HTML files to dist
@@ -63,6 +66,15 @@ gulp.task('styles', function(){
 			const error = gutil.colors.red;
 			gutil.log(error('Error in styles:',e.message));
 		})
+		.pipe(autoprefixer({
+			browsers: [
+				'iOS >= 8',
+				'Chrome >= 30',
+				'Explorer >= 9',
+				'Last 2 Edge Versions',
+				'Firefox >= 25'			
+			]			
+		}))
 		.pipe(minifyCSS())
 		.pipe(rename({suffix: '.min'}))
 		.pipe(gulp.dest(paths.styles.dest))
@@ -87,6 +99,7 @@ gulp.task('scripts', ['eslint'], function(){
 		.pipe(browserSync.stream())		
 });
 
+//run jsx code through eslint
 gulp.task('eslint', function(){
 	return gulp.src(paths.scripts.src + '**/*.js')
 		.pipe(eslint({
@@ -118,15 +131,26 @@ gulp.task('eslint', function(){
 });
 
 //copy assets to dist
-gulp.task('assets', () => {
+gulp.task('assets', function() {
 	return gulp.src(paths.assets.src + '**/*') 
 		.pipe(newer(paths.assets.dest))
 		.pipe(gulp.dest(paths.assets.dest))
 });
 
+//copy and optimise images
+gulp.task('images', function(){
+	return gulp.src(paths.images.src + '**/*')
+		.on('error',function(e){
+			const error = gutil.colors.red;
+			gutil.log(error('Error in images:',e.message));
+		})
+		.pipe(imagemin({ optimizationLevel: 3, progressive: true, interlaced: true }))
+		.pipe(newer(paths.images.dest))
+		.pipe(gulp.dest(paths.images.dest))
+});
 
 //start browsersync
-gulp.task('browser-sync', ['styles', 'scripts', 'html', 'assets'], function() {
+gulp.task('browser-sync', ['styles', 'scripts', 'html', 'assets', 'images'], function() {
     browserSync.init({
 		server: {
 			baseDir: './dist/',
@@ -139,7 +163,7 @@ gulp.task('browser-sync', ['styles', 'scripts', 'html', 'assets'], function() {
 	gulp.watch(paths.styles.src + '**/*.less', ['styles']);
 	gulp.watch(paths.scripts.src + '**/*.js', ['scripts']);
 	gulp.watch(paths.templates.src + '**/*.html', ['html']);
-	//gulp.watch(paths.images.src + '**/*', ['images']).on('change', browserSync.reload);
+	gulp.watch(paths.images.src + '**/*', ['images']).on('change', browserSync.reload);
 	gulp.watch(paths.assets.src + '**/*', ['assets']).on('change', browserSync.reload);		
 });
 
