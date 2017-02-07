@@ -40,6 +40,9 @@ var newer = require('gulp-newer');
 var autoprefixer = require('gulp-autoprefixer');
 var imagemin = require('gulp-imagemin');
 var del = require('del');
+var watchify = require('watchify');
+var argv = require('yargs').argv;
+var gulpif = require('gulp-if');
 //react specific requirements
 var babelify = require('babelify');
 var source = require('vinyl-source-stream');
@@ -81,7 +84,7 @@ gulp.task('styles', function(){
 		.pipe(gulp.dest(paths.styles.dest))
 		.pipe(browserSync.stream())
 });
-
+/*
 //copy, compile and minify JS to dist
 gulp.task('scripts', ['eslint'], function(){
 	process.env.NODE_ENV = 'production';
@@ -94,10 +97,44 @@ gulp.task('scripts', ['eslint'], function(){
 		})
 		.pipe(source('main.js'))
 		.pipe(buffer()) //convert streaming vinyl file object given by source() to buffered vinyl file object
-		.pipe(uglify()) //minify JS
+		//.pipe(uglify()) //minify JS
 		.pipe(rename({suffix: '.min'})) //rename output to include .min
 		.pipe(gulp.dest(paths.scripts.dest)) //pipe to destination
 		.pipe(browserSync.stream())		
+});
+*/
+
+//using watchify, seems to be quicker than the former, above, but still slow with uglify
+var bundler = watchify(browserify({
+	entries : [paths.scripts.src  + 'main.js'],
+	cache: {}, 
+	packageCache: {}, 
+	fullPaths: false,
+	debug: false //disable sourcemaps
+})).transform("babelify", {presets: ["es2015", "react"]});
+bundler.on('update', bundle);
+
+function bundle(){
+	process.env.NODE_ENV = 'production';
+	var minify = 1;
+	if(argv.devmode){
+		minify = 0;
+	}
+	return bundler.bundle()
+		.on('error',function(e){
+			const error = gutil.colors.red;
+			gutil.log(error('Error in script:',e.message));
+		})
+		.pipe(source('main.js'))
+		.pipe(buffer()) //convert streaming vinyl file object given by source() to buffered vinyl file object
+		.pipe(gulpif(minify, uglify())) //minify JS
+		.pipe(rename({suffix: '.min'})) //rename output to include .min
+		.pipe(gulp.dest(paths.scripts.dest)) //pipe to destination
+		.pipe(browserSync.stream())
+}
+
+gulp.task('bundle',['eslint'],function(){
+	return bundle();
 });
 
 //run jsx code through eslint
@@ -157,7 +194,7 @@ gulp.task('clean', (done) => {
 });
 
 //start browsersync
-gulp.task('browser-sync', ['styles', 'scripts', 'html', 'assets', 'images'], function() {
+gulp.task('browser-sync', ['styles', 'bundle', 'html', 'assets', 'images'], function() {
     browserSync.init({
 		server: {
 			baseDir: './dist/',
@@ -168,7 +205,7 @@ gulp.task('browser-sync', ['styles', 'scripts', 'html', 'assets', 'images'], fun
 		}
     });
 	gulp.watch(paths.styles.src + '**/*.less', ['styles']);
-	gulp.watch(paths.scripts.src + '**/*.js', ['scripts']);
+	gulp.watch(paths.scripts.src + '**/*.js', ['bundle']);
 	gulp.watch(paths.templates.src + '**/*.html', ['html']);
 	gulp.watch(paths.images.src + '**/*', ['images']).on('change', browserSync.reload);
 	gulp.watch(paths.assets.src + '**/*', ['assets']).on('change', browserSync.reload);		
