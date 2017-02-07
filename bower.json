@@ -1,9 +1,0 @@
-{
-  "name": "house-styles",
-  "version": "0.1",
-  "license": "MIT",
-  "private": true,
-  "devDependencies": {
-    "html5shiv": "~3.7.3",
-  }
-}
